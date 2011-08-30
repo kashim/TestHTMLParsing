@@ -5,7 +5,7 @@ Created on Aug 17, 2011
 '''
 from lxml import etree
 import logging
-import marathon_consts
+import marathon_utils
 from marathon_sport_parser import MarathonSportParser
 
 def toLog(msg):
@@ -33,9 +33,9 @@ class MarathonParser():
         return self.__parser 
 
     def __getUStrFromFile(self, fileName, encoding):
-        file = open( fileName )
-        ufile = unicode(file.read(), encoding)
-        file.close()
+        srcFile = open( fileName )
+        ufile = unicode( srcFile.read(), encoding )
+        srcFile.close()
         return ufile
 
     def getInitialXML(self):
@@ -52,8 +52,8 @@ class MarathonParser():
     def getSportList(self):
         xml = self.getInitialXML()
         sportList = xml.xpath( 
-                              marathon_consts.SPORT_LIST_XPATH,
-                              namespaces = marathon_consts.XPATH_REG_EX_NAMESPACE_MAP 
+                              marathon_utils.SPORT_LIST_XPATH,
+                              namespaces = marathon_utils.XPATH_REG_EX_NAMESPACE_MAP 
                              )
         return sportList
     

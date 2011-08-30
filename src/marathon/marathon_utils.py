@@ -6,6 +6,8 @@ Created on Aug 28, 2011
 SPORT_LIST_XPATH = "//div[reg:match(@id, 'container_[0-9]+')]"
 XPATH_REG_EX_NAMESPACE_NAME = "http://exslt.org/regular-expressions"
 XPATH_REG_EX_NAMESPACE_MAP = { 'reg': XPATH_REG_EX_NAMESPACE_NAME } 
+DEFAULT_FEED_NAME = "marathonbet.com"
+DEFAULT_OFFICE_NAME = "Marathon"
 
 
 NAME_CONVERSION_MAP = {
@@ -26,3 +28,25 @@ NAME_CONVERSION_MAP = {
     u"Player1": u"team1",
     u"Player2": u"team2"
 }
+
+class MarathonBet():
+    betType = ""
+    coef = 1
+    value = 0
+    
+    def __init__(self):
+        pass
+
+class MarathonEvent():
+    utc_unixtime = None
+    team1 = ""
+    team2 = ""
+    country = ""
+    feed = ""
+    league = ""
+    office = ""
+    sport = ""
+    betList = []
+    
+    def __init__(self):
+        pass
