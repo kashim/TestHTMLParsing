@@ -9,24 +9,28 @@ XPATH_REG_EX_NAMESPACE_MAP = { 'reg': XPATH_REG_EX_NAMESPACE_NAME }
 DEFAULT_FEED_NAME = "marathonbet.com"
 DEFAULT_OFFICE_NAME = "Marathon"
 
+EVENT_ELEMENT_TEAMS = u"event_name"
+EVENT_ELEMENT_WIN1 = u"win1"
+EVENT_ELEMENT_WIN2 = u"win2"
 
 NAME_CONVERSION_MAP = {
-    u"Home1": u"team1",
-    u"Away2": u"team2",
+    u"Home1": EVENT_ELEMENT_WIN1,
+    u"Away2": EVENT_ELEMENT_WIN2,
     u"Handicap1": u"handicap1",
     u"Handicap2": u"handicap2",
     u"Total under": u"total_under",
     u"Total over": u"total_over",
-    u"Athlete1": u"team1",
-    u"Athlete2": u"team2",
+    u"Athlete1": EVENT_ELEMENT_WIN1,
+    u"Athlete2": EVENT_ELEMENT_WIN2,
     u"DrawX": u"draw",
     u"1X": u"1x",
     u"X2": u"x2",
     u"12": u"12",
-    u"Fighter1": u"team1",
-    u"Fighter2": u"team2",
-    u"Player1": u"team1",
-    u"Player2": u"team2"
+    u"Fighter1": EVENT_ELEMENT_WIN1,
+    u"Fighter2": EVENT_ELEMENT_WIN2,
+    u"Player1": EVENT_ELEMENT_WIN1,
+    u"Player2": EVENT_ELEMENT_WIN2,
+    u"Event Name": EVENT_ELEMENT_TEAMS
 }
 
 class MarathonBet():
@@ -39,8 +43,8 @@ class MarathonBet():
 
 class MarathonEvent():
     utc_unixtime = None
-    team1 = ""
-    team2 = ""
+#    how dinamicly increase list size
+    teamList = [ "Unknown team 1", "Unknown team 2" ]
     country = ""
     feed = ""
     league = ""
@@ -50,3 +54,15 @@ class MarathonEvent():
     
     def __init__(self):
         pass
+    
+    
+def is_number(s):
+    try:
+        int(s) # for int, long and float
+    except ValueError:
+        try:
+            complex(s) # for complex
+        except ValueError:
+            return False
+
+    return True

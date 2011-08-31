@@ -8,6 +8,9 @@ from lxml import etree
 from copy import deepcopy
 import marathon_utils
 from marathon_utils import MarathonEvent
+import re
+import time
+import datetime
 
 def toLog(msg):
 #    pass
@@ -74,6 +77,39 @@ class MarathonSportParser():
                 self.__eventHeader[i] = ""
         toLog( self.getEventHeaderStr() )
     
+    def __parseEventTeams(self, cellXML, event):
+        cellValue = cellXML.xpath("//text()")
+        toLog( cellValue )
+        i = 0
+        while i < len( cellValue ):
+            tmp = re.search( "[0-9]\.", cellValue[i] )
+            toLog( "re search = " + str( tmp ) )
+            if tmp != None:
+                curVal = tmp.group(0)[:-1]
+                toLog( "tmp.group(0) " + str( curVal ) )
+                event.teamList[ int( curVal ) - 1 ] = cellValue[ i + 1 ]
+                i += 1
+            else:
+                tmp = re.search( "[0-9]{2}:[0-9]{2}", cellValue[i] )
+                toLog( "re search time = " + str( tmp ) )
+                if tmp != None:
+                    eventTime = time.strptime( str( tmp.group(0) ) , "%H:%M")
+                    eventDate = datetime.date.fromtimestamp( eventTime )
+                    toLog( eventDate )
+                    event.utc_unixtime = eventDate
+                
+            i += 1
+        toLog( event.teamList )
+    
+    
+    def __processEventElementParam(self, event, eventXML):
+        for i in range( 0, len( self.__eventHeader ) ):
+            currElem = deepcopy( eventXML[0][i] )
+            if self.__eventHeader[i] == marathon_utils.EVENT_ELEMENT_TEAMS:
+                self.__parseEventTeams( currElem, event )
+                toLog( event.utc_unixtime )
+                toLog( "; teams = " + str( event.teamList ) )
+    
     def __processEventElement(self, eventXML):
         event = MarathonEvent()
         event.country = self.getCountry()
@@ -81,15 +117,18 @@ class MarathonSportParser():
         event.league = self.getLeagueName()
         event.office = marathon_utils.DEFAULT_OFFICE_NAME
         event.sport = self.getSportName()
-      
+        
+        eventInfo = deepcopy( eventXML )
+        self.__processEventElementParam(event, eventInfo)
         
         return event
 
     def __processEvents(self):
-        node = self.getXML()[2][0][0] #etree.ElementTree( self.getXML() )
+        node = self.getXML()[2][0][0] #div[2] -> div -> table
+        #first element is table header 
         for i in range(1, len( node ) - 1):
-            tmp = self.__processEventElement(node[i])
-            self.__eventList.append( tmp )
+            newEvent = self.__processEventElement(node[i])
+            self.__eventList.append( newEvent )
         
     def getSportID(self):
         return self.__sportID
