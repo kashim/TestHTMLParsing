@@ -7,14 +7,15 @@ import logging
 from lxml import etree
 from copy import deepcopy
 import marathon_utils
-from marathon_utils import MarathonEvent
+#from marathon_utils import MarathonEvent, MarathonBet
 import re
-import time
-import datetime
+from datetime import datetime
+from models import Event, Bet
+import sys
 
 def toLog(msg):
-#    pass
-    logging.warning(msg)
+    pass
+#    logging.warning(msg)
 
 class MarathonSportParser():
     __sportXML = None
@@ -26,7 +27,14 @@ class MarathonSportParser():
     __eventList = []
     
     def __init__(self, sportXML):
-        self.__sportXML = sportXML
+        self.__sportXML = deepcopy( sportXML )
+        self.__sportID = None
+        self.__sportName = ""
+        self.__league = ""
+        self.__country = ""
+        self.__eventHeader = []
+        self.__eventList = []
+
         self.__processGeneralEventInfo()
         
     def __repr__(self):
@@ -52,6 +60,7 @@ class MarathonSportParser():
         self.__sportID = tmp[indx:]
             
     def __processEventHeader(self):
+        #div->div[2]->div->table->tr - general event
         node = self.getXML()[2][0][0][0]
         for elem in node:
             tmp = deepcopy( elem )
@@ -66,7 +75,7 @@ class MarathonSportParser():
         
     def __normalizeEventHeader(self):
         toLog( "before for start" )
-        for i in range( 0, len( self.__eventHeader ) - 1 ):
+        for i in range( 0, len( self.__eventHeader ) ):
 #            toLog( "iteration num " + str( i ) )
             elem = self.__eventHeader[i]
             if elem in marathon_utils.NAME_CONVERSION_MAP:
@@ -79,39 +88,89 @@ class MarathonSportParser():
     
     def __parseEventTeams(self, cellXML, event):
         cellValue = cellXML.xpath("//text()")
-        toLog( cellValue )
         i = 0
         while i < len( cellValue ):
             tmp = re.search( "[0-9]\.", cellValue[i] )
-            toLog( "re search = " + str( tmp ) )
+            # if found number then next elem is team name
             if tmp != None:
                 curVal = tmp.group(0)[:-1]
-                toLog( "tmp.group(0) " + str( curVal ) )
-                event.teamList[ int( curVal ) - 1 ] = cellValue[ i + 1 ]
+                teamName = unicode( cellValue[ i + 1 ] )
+                if int( curVal ) == 1:
+                    event.team1 = teamName
+                else:
+                    event.team2 = teamName
                 i += 1
             else:
-                tmp = re.search( "[0-9]{2}:[0-9]{2}", cellValue[i] )
-                toLog( "re search time = " + str( tmp ) )
+                # searching for event time with date
+                tmp = re.search( "[0-9]{2} [a-zA-Z]{3} [0-9]{2}:[0-9]{2}", cellValue[i] )
+                eventDate = None
                 if tmp != None:
-                    eventTime = time.strptime( str( tmp.group(0) ) , "%H:%M")
-                    eventDate = datetime.date.fromtimestamp( eventTime )
-                    toLog( eventDate )
-                    event.utc_unixtime = eventDate
+                    eventDate = datetime.strptime( str( tmp.group(0) ), "%d %b %H:%M" )
+                    eventDate = eventDate.replace( year = datetime.today().year )
+                else:
+                    #search for event time without date
+                    tmp = re.search( "[0-9]{2}:[0-9]{2}", cellValue[i] )
+                    if tmp != None:
+                        eventDate = datetime.strptime( str( tmp.group(0) ), "%H:%M" )
+                        today = datetime.today()
+                        eventDate = eventDate.replace( year = today.year, month = today.month, day = today.day )
                 
+                if eventDate != None:
+                    event.utc_unixtime = eventDate.strftime( "%d.%m.%Y %H:%M" )
+
             i += 1
-        toLog( event.teamList )
     
+    def __parseEventElementParamValue(self, event, elementHeader, xml):
+        if elementHeader != "":
+            betCoef = xml.xpath( "//text()" )
+            betCoef = u"".join( str( lstElem ).strip() for lstElem in betCoef )
+            betValue = 0
+            val = betCoef.find("(")
+            if val > -1:
+                val2 = betCoef.find(")")
+                if val2 > -1:
+                    betValue = float( betCoef[val + 1:val2] )
+                    betCoef = betCoef[val2 + 1:]
+            
+            bet = Bet()
+            bet.coef = elementHeader
+            bet.odds_decimal = betCoef
+            bet.odds_value = betValue
+            
+            event.addBet( bet )
+           
     
     def __processEventElementParam(self, event, eventXML):
         for i in range( 0, len( self.__eventHeader ) ):
-            currElem = deepcopy( eventXML[0][i] )
-            if self.__eventHeader[i] == marathon_utils.EVENT_ELEMENT_TEAMS:
-                self.__parseEventTeams( currElem, event )
-                toLog( event.utc_unixtime )
-                toLog( "; teams = " + str( event.teamList ) )
+            try:
+                currElem = deepcopy( eventXML[0][i] )
+                if self.__eventHeader[i] == marathon_utils.EVENT_ELEMENT_TEAMS:
+                    self.__parseEventTeams( currElem, event )
+                else:
+                    self.__parseEventElementParamValue(event, self.__eventHeader[i], currElem )
+            except:
+                tmp = u"index = {0}; header length = {1}; header value = {2}; sport id = {3}; sport name = {4}"
+                tmp += u" tournament name = {5}"
+                tmp = tmp.format(
+                            i, len( self.__eventHeader ), self.__eventHeader[i], self.getSportID(),
+                            self.getSportName(), self.getLeagueName()
+                      )
+                print tmp
+                
+        try:
+            toLog( u"event = " + str( event ) )
+        except:
+            print "  "
+            tmp = u"sport id = {0}; sport name = {1} tournament name = {2}"
+            tmp = tmp.format(
+                        self.getSportID(),
+                        self.getSportName(), 
+                        self.getLeagueName()
+                  )
+            print tmp
     
     def __processEventElement(self, eventXML):
-        event = MarathonEvent()
+        event = Event()
         event.country = self.getCountry()
         event.feed = marathon_utils.DEFAULT_FEED_NAME
         event.league = self.getLeagueName()
@@ -125,8 +184,10 @@ class MarathonSportParser():
 
     def __processEvents(self):
         node = self.getXML()[2][0][0] #div[2] -> div -> table
+        toLog( len( node ) )
         #first element is table header 
-        for i in range(1, len( node ) - 1):
+        for i in range(1, len( node ) ):
+            toLog( node[i].tag )
             newEvent = self.__processEventElement(node[i])
             self.__eventList.append( newEvent )
         
@@ -143,5 +204,11 @@ class MarathonSportParser():
         return self.__country
     
     def parseSport(self):
-        self.__processEventHeader()
-        self.__processEvents()
+        if marathon_utils.needParseSport(self.getSportName(), self.getLeagueName()):
+            self.__processEventHeader()
+            self.__processEvents()
+            res = self.__eventList
+        else:
+            res = None
+
+        return res

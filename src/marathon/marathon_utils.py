@@ -33,28 +33,22 @@ NAME_CONVERSION_MAP = {
     u"Event Name": EVENT_ELEMENT_TEAMS
 }
 
-class MarathonBet():
-    betType = ""
-    coef = 1
-    value = 0
-    
-    def __init__(self):
-        pass
+EXCLUDE_LEAGUE_NAME_LIST = [ u"Ante Post", u"Horse Racing" ]
 
-class MarathonEvent():
-    utc_unixtime = None
-#    how dinamicly increase list size
-    teamList = [ "Unknown team 1", "Unknown team 2" ]
-    country = ""
-    feed = ""
-    league = ""
-    office = ""
-    sport = ""
-    betList = []
-    
-    def __init__(self):
-        pass
-    
+def needParseSport( sportName, leagueName):
+    res = True
+    i = 0
+    while ( i < len( EXCLUDE_LEAGUE_NAME_LIST ) ) and res:
+        elem = EXCLUDE_LEAGUE_NAME_LIST[i]
+        elem = elem.strip().upper()
+        if leagueName.strip().upper() == elem:
+            res = False
+        elif sportName.strip().upper().find( elem ) > -1:
+            res = False
+        
+        i += 1
+
+    return res
     
 def is_number(s):
     try:

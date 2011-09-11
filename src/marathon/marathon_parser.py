@@ -4,9 +4,12 @@ Created on Aug 17, 2011
 @author: kashim
 '''
 from lxml import etree
+import simplejson as json
 import logging
 import marathon_utils
 from marathon_sport_parser import MarathonSportParser
+import sys
+from pprint import pprint
 
 def toLog(msg):
     logging.warning(msg)
@@ -48,6 +51,8 @@ class MarathonParser():
     def __init__(self, fileName, encoding):
         self.__fileName = fileName
         self.__encoding = encoding
+        self.__parser = None
+        self.__XML = None
 
     def getSportList(self):
         xml = self.getInitialXML()
@@ -59,21 +64,44 @@ class MarathonParser():
     
     def processXML(self):
         sportList = self.getSportList()
+        sportJsonList = []
         for sport in sportList:
             sportParser = MarathonSportParser( sport )
             
-            if sportParser.getSportID() == "119460":
+#            if sportParser.getSportID() == "119460":
 #            if sportParser.getSportID() == "416141":
-                toLog( str( sportParser ) ) 
-                sportParser.parseSport()
+#                toLog( str( sportParser ) ) 
+            events = sportParser.parseSport()
+            if events != None:
+                try:
+                    result = map(lambda o: o.as_dict(), events)
+        #            pprint( result, indent = 4 )
+                    sportJson = json.dumps( result )
+                    sportJsonList.append(sportJson)
+                except:
+                    tmp = u"Error: events length = {0}"
+                    print tmp.format( len( events ) )    
+                    for event in events:
+                        print str( event )
+        
+        return sportJsonList
         
 if __name__ == "__main__":
+    fileName = "/Users/kashim/Projects/Bookmaker/4_marathon/all_en.html"
+#    fileName = "/Users/kashim/Projects/Bookmaker/4_marathon/all_ru.html"
+#    fileName = sys.argv[1] # filename could be command name also
+    outFileName = "/Users/kashim/Projects/Eclipse/DefWorkplace/TestHTMLParsing/src/marathon.json"
+#    outFileName = sys.argv[2]
+    encoding = "UTF-8"
+    
     parser = MarathonParser(
-#                            "/Users/kashim/Projects/Bookmaker/4_marathon/all_ru.html",
-                            "/Users/kashim/Projects/Bookmaker/4_marathon/all_en.html",
-                            "UTF-8"
-#                            "windows-1251"
+                            fileName,
+                            encoding
                            )
-    parser.processXML()
+    sportJsonList = parser.processXML()
+    if len( sportJsonList ) > 0:
+        with open(outFileName, 'wb') as _f:
+            for sport in sportJsonList:
+                _f.write( sport )
     
         

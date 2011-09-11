@@ -14,3 +14,9 @@ src/marathon/marathon_utils.pyc
 .pydevproject
 
 .project
+
+src/marathon/models.pyc
+
+src/marathon.json
+
+.settings/org.eclipse.core.resources.prefs
